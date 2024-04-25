@@ -63,7 +63,7 @@ else:
     xr_model=xr.open_zarr(dataset).sortby('latitude').sel(latitude=slice(20,50),longitude=slice(250,300))
 xr_model=xr_model.sel(time=xr_model.time.dt.year.isin([year]))
 xr_model=xr_model.sel(time=xr_model.time.dt.month.isin([month]))
-for t in xr_model.time:
+for t in xr_model.time[251:]:
     xr_dataset=xr_model.sel(time=t)
     fcst_init=xr_dataset.time
     init=fcst_init.dt.strftime('%Y%m%d%H').values; print(init)
