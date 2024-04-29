@@ -64,7 +64,7 @@ for nn in range(len(models))[:]:
     color=colors[nn]
     ii=[1,1,1,1,0][nn]
     print(model)
-    files=sorted(glob(datapath+'*'+model+'*.nc'))
+    files=sorted(glob(datapath+'*USA_conv_'+model+'*.nc'))
     sal_s=np.zeros([41,len(files)]); sal_s[:]=np.nan
     sal_a=np.zeros([41,len(files)]); sal_a[:]=np.nan
     sal_l=np.zeros([41,len(files)]); sal_l[:]=np.nan
@@ -99,21 +99,22 @@ for nn in range(len(models))[:]:
             
     ds = xr.Dataset(
         data_vars=dict(
-            structure=(["leadtime","date"], sal_s[ii:,:]),
-            amplitude=(["lead time","date"], sal_a[ii:,:]),
-            location=(["lead time","date"], sal_l[ii:,:]),
-            rmse=(["lead time","date"], rmse[ii:,:]),
-            bias=(["lead time","date"], bias[ii:,:]),
-            fss_low=(["lead time","date"], fss_eval_300[ii:,:]),
-            fss_high=(["lead time","date"], fss_eval_1000[ii:,:]),
+            structure=(["leadtime","date"], sal_s[ii:,:-1]),
+            amplitude=(["lead time","date"], sal_a[ii:,:-1]),
+            location=(["lead time","date"], sal_l[ii:,:-1]),
+            rmse=(["lead time","date"], rmse[ii:,:-1]),
+            bias=(["lead time","date"], bias[ii:,:-1]),
+            fss_low=(["lead time","date"], fss_eval_300[ii:,:-1]),
+            fss_high=(["lead time","date"], fss_eval_1000[ii:,:-1]),
         ),
         coords=dict(
-            date=(["date"], era_ref.time.values[::2]),
-            leadtime=(["leadtime"], model_set.prediction_timedelta.values),
+            date=(["date"], np.arange(sal_a[ii:,:-1].shape[1])),
+            leadtime=(["leadtime"], np.arange(sal_a[ii:,:-1].shape[0])*6),
         ),
         attrs=dict(description="Evaluation scores"),
     )
     ds.to_netcdf(datapath+model+var+'_eval_scores.nc')
+    ds.close()
     
     axes2[0].plot(np.arange(41)*6,np.nanmean(sal_s,axis=1),c=color,label=label)
     axes2[0].plot([0,240],np.zeros(2),c='grey')
@@ -170,7 +171,7 @@ for nn in range(len(models))[:]:
 
 
 fig2.tight_layout()
-fig2.show()
+#fig2.show()
 fig2.savefig(figpath+var+'_sal_scores.png')
 
 fig.tight_layout()
