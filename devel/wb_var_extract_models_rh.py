@@ -28,15 +28,7 @@ print('settings loaded')
 figpath='/users/mfeldman/figs/'
 era5='gs://weatherbench2/datasets/era5/1959-2022-6h-1440x721.zarr'
 ifs_init='gs://weatherbench2/datasets/hres_t0/2016-2022-6h-1440x721.zarr'
-dataset='gs://weatherbench2/datasets/pangu/2018-2022_0012_0p25.zarr'
-#dataset='gs://weatherbench2/datasets/hres/2016-2022-0012-1440x721.zarr'
-# dataset='gs://weatherbench2/datasets/fuxi/2020-1440x721.zarr'
-# dataset='gs://weatherbench2/datasets/keisler/2020-360x181.zarr'
-# dataset='gs://weatherbench2/datasets/sphericalcnn/2020-240x121_equiangular_with_poles.zarr'
 mlpath='/work/FAC/FGSE/IDYST/tbeucler/default/raw_data/MF_ML_PREDICT/season_2020/'
-#mlpath='/work/FAC/FGSE/IDYST/tbeucler/default/raw_data/ML_PREDICT/panguweather/Data_Monika/'
-model='graphcast_dawn'
-#%%
 
 #EVENT SELECTION ERA5
 if event_ID==0:
@@ -71,6 +63,10 @@ elif event_ID==4:
     flag='EUR'
 
 savepath='/work/FAC/FGSE/IDYST/tbeucler/default/raw_data/MF_ML_PREDICT/season_2020_'+flag+'/'
+
+#%%
+#FOURCASTNET
+
 era5='gs://weatherbench2/datasets/era5/1959-2022-6h-1440x721.zarr'
 xr_era5=xr.open_zarr(era5).sortby('latitude')
 if lon_conv:
@@ -81,59 +77,54 @@ xr_era5=xr_era5.sel(time=xr_era5.time.dt.year.isin([year]))
 xr_era5=xr_era5.sel(time=xr_era5.time.dt.month.isin([month]))
 zsurf_c=xr_era5['geopotential_at_surface']
 #LOADING FORECAST DATASET
-models=['pangu','pangu-oper','ifs','graphcast','graphcast-oper']
-d1='gs://weatherbench2/datasets/pangu/2018-2022_0012_0p25.zarr'
-d2='gs://weatherbench2/datasets/pangu_hres_init/2020_0012_0p25.zarr'
-d3='gs://weatherbench2/datasets/graphcast/2020/date_range_2019-11-16_2021-02-01_12_hours_derived.zarr'
-d4='gs://weatherbench2/datasets/graphcast_hres_init/2020/date_range_2019-11-16_2021-02-01_12_hours_derived.zarr'
-d5='gs://weatherbench2/datasets/hres/2016-2022-0012-1440x721.zarr'
-paths=[d1,d2,d5,d3,d4]
-dataset=paths[nn]
+models=['sfno','sfno-oper']
 model=models[nn]
-if nn>2:
-    xr_model=xr.open_zarr(dataset)
-    xr_model=xr_model.rename({'lat': 'latitude','lon': 'longitude'})
+path='/work/FAC/FGSE/IDYST/tbeucler/default/raw_data/AI-milton/Monika_4castnet_2020/'
+files=[]
+
+for mon in month:
+    mon=str(mon).zfill(2) 
+    files+=sorted(glob.glob(path+'*2020-'+mon+'*T00_to*.nc')+glob.glob(path+'*2020-'+mon+'*T12_to*.nc'))
+
+for file in files[:]:
+    xr_model=xr.open_dataset(file)
+    strfind1=file.find('fcnv2_')+len('fcnv2_')
+    strfind2=file.find('_to')
+    init=file[strfind1:strfind2].replace('-','').replace('T','')
+    xr_model=xr_model.rename({'lat':'latitude'})
+    xr_model=xr_model.rename({'lon':'longitude'})
+    xr_model=xr_model.rename({'time':'prediction_timedelta'})
     if lon_conv:
         xr_model.coords['longitude'] = (xr_model.coords['longitude'] + 180) % 360 - 180
         xr_model = xr_model.sortby(xr_model.longitude)
+    #xr_model=xr_model.squeeze(dim='history')
     xr_model=xr_model.sortby('latitude').sel(latitude=latslice,longitude=lonslice)
-else:    
-    xr_model=xr.open_zarr(dataset).sortby('latitude')
-    if lon_conv:
-        xr_model.coords['longitude'] = (xr_model.coords['longitude'] + 180) % 360 - 180
-        xr_model = xr_model.sortby(xr_model.longitude)
-    xr_model = xr_model.sel(latitude=latslice,longitude=lonslice)
-xr_model=xr_model.sel(time=xr_model.time.dt.year.isin([year]))
-xr_model=xr_model.sel(time=xr_model.time.dt.month.isin([month]))
-for t in xr_model.time[:251]:
-    xr_dataset=xr_model.sel(time=t)
-    fcst_init=xr_dataset.time
-    init=fcst_init.dt.strftime('%Y%m%d%H').values; print(init)
-    #xr_dataset=xr_dataset.sel(prediction_timedelta=slice(start-fcst_init,end-fcst_init))
-    xr_dataset = xr_dataset.sortby('level', ascending=False)
-    
-    plevel=copy.deepcopy(xr_dataset.level.values)
-    
-    xr_dataset['pressure'] = (('level'), plevel)
-    plevel=xr_dataset.pressure
-    #xr_dataset = xr_dataset.assign_coords(level=np.arange(len(plevel)))
-    
-    tlevel=xr_dataset.temperature
-    qlevel=xr_dataset.specific_humidity
+    plevel=[50,100,150,200,250,300,400,500,600,700,850,925,1000]
+    ulevel = xr_model.u #xr_model['__xarray_dataarray_variable__'][:,8:21,:]
+    vlevel = xr_model.v #['__xarray_dataarray_variable__'][:,21:34,:]
+    zlevel = xr_model.z #['__xarray_dataarray_variable__'][:,34:47,:]
+    tlevel = xr_model.t #['__xarray_dataarray_variable__'][:,47:60,:]
+    rlevel = xr_model.r #['__xarray_dataarray_variable__'][:,60:73,:]
+    pmsl = xr_model.sp #['__xarray_dataarray_variable__'][:,5,:]
+    tsurf = xr_model.t2m #['__xarray_dataarray_variable__'][:,4,:]
+    usurf = xr_model.u10 #['__xarray_dataarray_variable__'][:,0,:]
+    vsurf = xr_model.v10 #['__xarray_dataarray_variable__'][:,1,:]
+
     plevel_dim=np.ones([1,len(plevel),1,1])
-    zlevel=xr_dataset.geopotential
-    ulevel=xr_dataset.u_component_of_wind
-    vlevel=xr_dataset.v_component_of_wind
-    for n1 in range(len(plevel.data)):
+    for n1 in range(len(plevel)):
         plevel_dim[0,n1,0,0]=plevel[n1]
     plevel_exp=(tlevel/tlevel)*plevel_dim
     
-    pmsl=xr_dataset.mean_sea_level_pressure
-    tsurf=xr_dataset['2m_temperature']
-    #zsurf = zsurf_c.expand_dims(dim={"time": psurf.time}, axis=0)
-    #zsurf = zsurf_c.expand_dims(dim={"time": pmsl.time}, axis=0)
+    dplevel=metpy.calc.dewpoint_from_relative_humidity(tlevel.values* units('K'), rlevel.values* units.percent)
+    qlevel=metpy.calc.specific_humidity_from_dewpoint(plevel_exp.values* units('hPa'), dplevel).magnitude
+    #.to(units('kg/kg')#.magnitude
+
     zsurf = zsurf_c.expand_dims(dim={"prediction_timedelta": pmsl.prediction_timedelta}, axis=0)
+    #zsurf=zsurf.sel(latitude=latslice,longitude=slice(250,300))
     
+    #zsurf = zsurf_c.expand_dims(dim={"history": psurf.history}, axis=1)
+    #zsurf = zsurf.expand_dims(dim={"prediction_timedelta": psurf.prediction_timedelta}, axis=1)
+     
     zs=zsurf/9.81
     zl=zlevel/9.81
 
@@ -145,9 +136,9 @@ for t in xr_model.time[:251]:
     mod_inst=mod_inst.assign_coords(latitude=psurf.latitude.values);
     mod_inst=mod_inst.assign_coords(prediction_timedelta=psurf.prediction_timedelta.values)
 
-    du_01=ulevel.sel(level=850)-xr_dataset['10m_u_component_of_wind']; dv_01=vlevel.sel(level=850)-xr_dataset['10m_v_component_of_wind']
-    du_03=ulevel.sel(level=700)-xr_dataset['10m_u_component_of_wind']; dv_03=vlevel.sel(level=700)-xr_dataset['10m_v_component_of_wind']
-    du_06=ulevel.sel(level=500)-xr_dataset['10m_u_component_of_wind']; dv_06=vlevel.sel(level=500)-xr_dataset['10m_v_component_of_wind']
+    du_01=ulevel[:,10,:,:]-usurf; dv_01=vlevel[:,10,:,:]-vsurf
+    du_03=ulevel[:,9,:,:]-usurf; dv_03=vlevel[:,9,:,:]-vsurf
+    du_06=ulevel[:,7,:,:]-usurf; dv_06=vlevel[:,7,:,:]-vsurf
     
     bs_01=( du_01**2 + dv_01**2 )**0.5
     bs_03=( du_03**2 + dv_03**2 )**0.5
@@ -169,18 +160,16 @@ for t in xr_model.time[:251]:
     mod_params['cin']=mod_inst.sel(mcape_mcin_lcl_lfc='mcin')
     mod_params['lcl']=mod_inst.sel(mcape_mcin_lcl_lfc='lcl')
     mod_params['lfc']=mod_inst.sel(mcape_mcin_lcl_lfc='lfc')#.squeeze(dim='mcape_mcin_lcl_lfc')
-    rlevel=metpy.calc.relative_humidity_from_specific_humidity(plevel_exp.values* units('hPa'), tlevel.values* units('K'), qlevel.values* units('kg/kg')).to('%').magnitude
-    r1level=copy.deepcopy(tlevel)
-    r1level.data=rlevel
-    mod_params['q500']=qlevel.sel(level=500)
-    mod_params['r500']=r1level.sel(level=500)
-    mod_params['t500']=tlevel.sel(level=500)
-    mod_params['q925']=qlevel.sel(level=925)
-    mod_params['r925']=r1level.sel(level=925)
-    mod_params['t925']=tlevel.sel(level=925)
+    q1level=copy.deepcopy(tlevel)
+    q1level.data=qlevel
+    mod_params['q500']=q1level[:,7,:,:]
+    mod_params['r500']=rlevel[:,7,:,:]
+    mod_params['t500']=tlevel[:,7,:,:]
+    mod_params['q925']=q1level[:,11,:,:]
+    mod_params['r925']=rlevel[:,11,:,:]
+    mod_params['t925']=tlevel[:,11,:,:]
     mod_params = mod_params.squeeze()
-    mod_params = mod_params.drop(['level','mcape_mcin_lcl_lfc'])
+    mod_params = mod_params.drop(['mcape_mcin_lcl_lfc'])
     
     
     mod_params.to_netcdf(savepath+flag+'_conv_'+model+'_'+init+'.nc')
-   
