@@ -161,7 +161,7 @@ for file in files[:]:
     mod_params['q925']=q1level.sel(level=925)*1000
     mod_params['r925']=rlevel.sel(level=925)
     mod_params['t925']=tlevel.sel(level=925)
-    mod_inst=wrf.cape_2d(pres_hpa=plevel_exp, tkel=tlevel, qv=qlevel, height=zl, terrain=zs, psfc_hpa=psurf, ter_follow=False)
+    mod_inst=wrf.cape_2d(pres_hpa=plevel_exp, tkel=tlevel, qv=qlevel, height=zl, terrain=zs, psfc_hpa=ps, ter_follow=False)
     mod_inst=mod_inst.assign_coords(longitude=psurf.longitude.values);
     mod_inst=mod_inst.assign_coords(latitude=psurf.latitude.values);
     mod_inst=mod_inst.assign_coords(prediction_timedelta=psurf.prediction_timedelta.values)
@@ -174,4 +174,4 @@ for file in files[:]:
     mod_params = mod_params.drop(['mcape_mcin_lcl_lfc','level'])
     
     
-    mod_params.to_netcdf(savepath+flag+'_conv_'+model+'_'+init+'.nc')
+    mod_params.to_netcdf(savepath+flag+'_conv_'+model+'_'+init+'a.nc')
