@@ -22,14 +22,47 @@ print('modules loaded')
 ##%
 parser = ap.ArgumentParser()
 parser.add_argument('--var', type=str, required=True)
+parser.add_argument('--region', type=str, required=True)
 args = parser.parse_args()
 mm=int(args.var)
+event_ID=int(args.region)
 print('settings loaded')
+##% REGION SELECTION
+if event_ID==0:
+    ###USA
+    year=2020; month=np.arange(3,10); 
+    latslice=slice(20,50); lonslice=slice(250,300)
+    lon_conv=False
+    flag='USA'
+elif event_ID==1:
+    ###ARGENTINA
+    year=2020; month=(9,10,11,12,1,2)
+    latslice=slice(-40,-25); lonslice=slice(290,310)
+    lon_conv=False
+    flag='ARG'
+elif event_ID==2:
+    ###AUSTRALIA
+    year=2020; month=(9,10,11,12,1,2)
+    latslice=slice(-35,-20); lonslice=slice(140,155)
+    lon_conv=False
+    flag='AUS'
+elif event_ID==3:
+    ###CHINA
+    year=2020; month=np.arange(4,10)
+    latslice=slice(20,35); lonslice=slice(100,120)
+    lon_conv=False
+    flag='CHN'
+elif event_ID==4:
+    ###EUROPE
+    year=2020; month=np.arange(4,10)
+    latslice=slice(35,55); lonslice=slice(-10,30)
+    lon_conv=True
+    flag='EUR'
 ##% SETTINGS
-datapath='/work/FAC/FGSE/IDYST/tbeucler/default/raw_data/MF_ML_PREDICT/season_2020/'
-models=['graphcast_','graphcast-oper_','pangu_','pangu-oper_','ifs_']#'fcnv2_dawn','ifs']
-labels=['graphcast','graphcast-oper','pangu','pangu-oper','ifs']
-references=['USA_era5_convseason_2020.nc','USA_init_convseason_2020.nc']
+datapath='/work/FAC/FGSE/IDYST/tbeucler/default/raw_data/MF_ML_PREDICT/season_2020_'+flag+'/'
+models=['graphcast_','graphcast-oper_','pangu_','pangu-oper_','ifs_','sfno_','sfno-oper_','graphcast-red']#'fcnv2_dawn','ifs']
+labels=['graphcast','graphcast-oper','pangu','pangu-oper','ifs','sfno','sfno-oper','graphcast-red']
+references=[flag+'_era5_convseason_2020.nc',flag+'_init_convseason_2020.nc']
 rlabels=['era5','ifs-init']
 figpath='/users/mfeldman/figs/season/'
 c1='#648fff' #lightblue
@@ -39,7 +72,7 @@ c4='#fe6100' #orange
 c5='#ffb000' #gold
 c6='#000000' #black
 c7='#808080' #grey
-colors=[c1,c2,c4,c3,c6]
+colors=[c1,c2,c4,c3,c6,c5,c5,c5]
 ##% EVALUATION
 era_ref=xr.open_dataset(datapath+references[0]).sortby('latitude').fillna(0)
 cape=era_ref.cape.squeeze().values
@@ -56,15 +89,15 @@ l2=[1000,-300,20,10,10,500][mm]
 f1=[1,-1,1,1,1,1][mm]
 fig,axes = plt.subplots(1,4,figsize=(16, 5))
 fig2,axes2 = plt.subplots(1,3,figsize=(12, 5))
-for nn in range(len(models))[:]:
+for nn in range(len(models))[-2:]:
     kw='latitude'
     kw2='prediction_timedelta'
     model=models[nn]
     label=labels[nn]
     color=colors[nn]
-    ii=[1,1,1,1,0][nn]
+    ii=[1,1,1,1,0,1,1,1][nn]
     print(model)
-    files=sorted(glob(datapath+'*USA_conv_'+model+'*.nc'))
+    files=sorted(glob(datapath+'*'+flag+'_conv_'+model+'*.nc'))
     sal_s=np.zeros([41,len(files)]); sal_s[:]=np.nan
     sal_a=np.zeros([41,len(files)]); sal_a[:]=np.nan
     sal_l=np.zeros([41,len(files)]); sal_l[:]=np.nan
@@ -74,9 +107,16 @@ for nn in range(len(models))[:]:
     rmse=np.zeros([41,len(files)]); rmse[:]=np.nan
     bias=np.zeros([41,len(files)]); bias[:]=np.nan
 
-    for file in range(len(files)-22):
+    for file in range(len(files)):
         print(file)
         model_set=xr.open_dataset(files[file]).sortby(kw).fillna(0).squeeze()
+        #model_set=xr.open_dataset(files[101]).sortby('latitude').fillna(0).squeeze()
+        if model_set.prediction_timedelta[0]==6:
+            model_set.coords['prediction_timedelta']=model_set.coords['prediction_timedelta']*1000000000*3600
+        if np.isin(model_set.time+model_set.prediction_timedelta[-1].values , era_ref.time.values)==False:
+            print('skipping ', model_set.time.values)
+            continue
+        print('processing ', model_set.time.values)
         if var=='wms':
             capem=model_set.cape.squeeze().values
             wmsm=(capem * 2)**0.5 * model_set.bs_06

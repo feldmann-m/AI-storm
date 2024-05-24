@@ -81,13 +81,13 @@ xr_era5=xr_era5.sel(time=xr_era5.time.dt.year.isin([year]))
 xr_era5=xr_era5.sel(time=xr_era5.time.dt.month.isin([month]))
 zsurf_c=xr_era5['geopotential_at_surface']
 #LOADING FORECAST DATASET
-models=['pangu','pangu-oper','ifs','graphcast','graphcast-oper']
+models=['pangu','pangu-oper','ifs','graphcast','graphcast-oper','graphcast-red']
 d1='gs://weatherbench2/datasets/pangu/2018-2022_0012_0p25.zarr'
 d2='gs://weatherbench2/datasets/pangu_hres_init/2020_0012_0p25.zarr'
 d3='gs://weatherbench2/datasets/graphcast/2020/date_range_2019-11-16_2021-02-01_12_hours_derived.zarr'
 d4='gs://weatherbench2/datasets/graphcast_hres_init/2020/date_range_2019-11-16_2021-02-01_12_hours_derived.zarr'
 d5='gs://weatherbench2/datasets/hres/2016-2022-0012-1440x721.zarr'
-paths=[d1,d2,d5,d3,d4]
+paths=[d1,d2,d5,d3,d4,d3]
 dataset=paths[nn]
 model=models[nn]
 if nn>2:
@@ -105,7 +105,9 @@ else:
     xr_model = xr_model.sel(latitude=latslice,longitude=lonslice)
 xr_model=xr_model.sel(time=xr_model.time.dt.year.isin([year]))
 xr_model=xr_model.sel(time=xr_model.time.dt.month.isin([month]))
-for t in xr_model.time[:251]:
+if nn==5: xr_model.sel(level=[  50,  100,  150,  200,  250,  300,  400,  500,  600,  700,  850,  925,
+       1000])
+for t in xr_model.time[:]:
     xr_dataset=xr_model.sel(time=t)
     fcst_init=xr_dataset.time
     init=fcst_init.dt.strftime('%Y%m%d%H').values; print(init)

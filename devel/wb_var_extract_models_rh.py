@@ -18,10 +18,10 @@ import argparse as ap
 print('modules loaded')
 ##%
 parser = ap.ArgumentParser()
-parser.add_argument('--model', type=str, required=True)
+#parser.add_argument('--model', type=str, required=True)
 parser.add_argument('--region', type=str, required=True)
 args = parser.parse_args()
-nn=int(args.model)
+nn=1#int(args.model)
 event_ID=int(args.region)
 print('settings loaded')
 ##%
@@ -79,21 +79,22 @@ zsurf_c=xr_era5['geopotential_at_surface']
 #LOADING FORECAST DATASET
 models=['sfno','sfno-oper']
 model=models[nn]
-path='/work/FAC/FGSE/IDYST/tbeucler/default/raw_data/AI-milton/Monika_4castnet_2020/'
+path='/work/FAC/FGSE/IDYST/tbeucler/default/raw_data/AI-milton/Monika_4castnet_2020/IFS_init/'
 files=[]
 
 for mon in month:
     mon=str(mon).zfill(2) 
-    files+=sorted(glob.glob(path+'*2020-'+mon+'*T00_to*.nc')+glob.glob(path+'*2020-'+mon+'*T12_to*.nc'))
+    files+=sorted(glob.glob(path+'*2020.'+mon+'*00h00m_*.nc')+glob.glob(path+'*2020.'+mon+'*12h00m_*.nc'))
 
 for file in files[:]:
     xr_model=xr.open_dataset(file)
-    strfind1=file.find('fcnv2_')+len('fcnv2_')
-    strfind2=file.find('_to')
-    init=file[strfind1:strfind2].replace('-','').replace('T','')
-    xr_model=xr_model.rename({'lat':'latitude'})
-    xr_model=xr_model.rename({'lon':'longitude'})
-    xr_model=xr_model.rename({'time':'prediction_timedelta'})
+    strfind1=file.find('fcnet_')+len('fcnet_')
+    strfind2=file.find('_max')
+    init=file[strfind1:strfind2].replace('-','').replace('T','').replace('h','').replace('m','').replace('.','')
+    init2=xr_model.time.values
+    # xr_model=xr_model.rename({'lat':'latitude'})
+    # xr_model=xr_model.rename({'lon':'longitude'})
+    xr_model=xr_model.rename({'leadtime_hours':'prediction_timedelta'})
     if lon_conv:
         xr_model.coords['longitude'] = (xr_model.coords['longitude'] + 180) % 360 - 180
         xr_model = xr_model.sortby(xr_model.longitude)
@@ -105,7 +106,7 @@ for file in files[:]:
     zlevel = xr_model.z #['__xarray_dataarray_variable__'][:,34:47,:]
     tlevel = xr_model.t #['__xarray_dataarray_variable__'][:,47:60,:]
     rlevel = xr_model.r #['__xarray_dataarray_variable__'][:,60:73,:]
-    pmsl = xr_model.sp #['__xarray_dataarray_variable__'][:,5,:]
+    psurf = xr_model.sp #['__xarray_dataarray_variable__'][:,5,:]
     tsurf = xr_model.t2m #['__xarray_dataarray_variable__'][:,4,:]
     usurf = xr_model.u10 #['__xarray_dataarray_variable__'][:,0,:]
     vsurf = xr_model.v10 #['__xarray_dataarray_variable__'][:,1,:]
@@ -119,26 +120,23 @@ for file in files[:]:
     qlevel=metpy.calc.specific_humidity_from_dewpoint(plevel_exp.values* units('hPa'), dplevel).magnitude
     #.to(units('kg/kg')#.magnitude
 
-    zsurf = zsurf_c.expand_dims(dim={"prediction_timedelta": pmsl.prediction_timedelta}, axis=0)
+    # zsurf = zsurf_c.expand_dims(dim={"prediction_timedelta": psurf.prediction_timedelta}, axis=0)
     #zsurf=zsurf.sel(latitude=latslice,longitude=slice(250,300))
     
-    #zsurf = zsurf_c.expand_dims(dim={"history": psurf.history}, axis=1)
-    #zsurf = zsurf.expand_dims(dim={"prediction_timedelta": psurf.prediction_timedelta}, axis=1)
+    zsurf = zsurf_c.expand_dims(dim={"time": psurf.time}, axis=0)
+    zsurf = zsurf.expand_dims(dim={"prediction_timedelta": psurf.prediction_timedelta}, axis=1)
      
     zs=zsurf/9.81
     zl=zlevel/9.81
 
-    psurf=pmsl * (tsurf/ (tsurf - (zs) * 0.0065))**(-1)
+    #psurf=pmsl * (tsurf/ (tsurf - (zs) * 0.0065))**(-1)
     ps=psurf/100
 
-    mod_inst=wrf.cape_2d(pres_hpa=plevel_exp, tkel=tlevel, qv=qlevel, height=zl, terrain=zs, psfc_hpa=psurf, ter_follow=False)
-    mod_inst=mod_inst.assign_coords(longitude=psurf.longitude.values);
-    mod_inst=mod_inst.assign_coords(latitude=psurf.latitude.values);
-    mod_inst=mod_inst.assign_coords(prediction_timedelta=psurf.prediction_timedelta.values)
+    
 
-    du_01=ulevel[:,10,:,:]-usurf; dv_01=vlevel[:,10,:,:]-vsurf
-    du_03=ulevel[:,9,:,:]-usurf; dv_03=vlevel[:,9,:,:]-vsurf
-    du_06=ulevel[:,7,:,:]-usurf; dv_06=vlevel[:,7,:,:]-vsurf
+    du_01=ulevel.sel(level=850)-usurf; dv_01=vlevel.sel(level=850)-vsurf
+    du_03=ulevel.sel(level=700)-usurf; dv_03=vlevel.sel(level=700)-vsurf
+    du_06=ulevel.sel(level=500)-usurf; dv_06=vlevel.sel(level=500)-vsurf
     
     bs_01=( du_01**2 + dv_01**2 )**0.5
     bs_03=( du_03**2 + dv_03**2 )**0.5
@@ -155,21 +153,25 @@ for file in files[:]:
     bs_06=bs_06.to_dataset(name='bs_06')
     
     mod_params=xr.merge([du_01,dv_01,bs_01,du_03,dv_03,bs_03,du_06,dv_06,bs_06],compat='override')
+    q1level=copy.deepcopy(tlevel)
+    q1level.data=qlevel
+    mod_params['q500']=q1level.sel(level=500)*1000
+    mod_params['r500']=rlevel.sel(level=500)
+    mod_params['t500']=tlevel.sel(level=500)
+    mod_params['q925']=q1level.sel(level=925)*1000
+    mod_params['r925']=rlevel.sel(level=925)
+    mod_params['t925']=tlevel.sel(level=925)
+    mod_inst=wrf.cape_2d(pres_hpa=plevel_exp, tkel=tlevel, qv=qlevel, height=zl, terrain=zs, psfc_hpa=psurf, ter_follow=False)
+    mod_inst=mod_inst.assign_coords(longitude=psurf.longitude.values);
+    mod_inst=mod_inst.assign_coords(latitude=psurf.latitude.values);
+    mod_inst=mod_inst.assign_coords(prediction_timedelta=psurf.prediction_timedelta.values)
     #mod_params=mod_params.squeeze(dim='level')
     mod_params['cape']=mod_inst.sel(mcape_mcin_lcl_lfc='mcape')
     mod_params['cin']=mod_inst.sel(mcape_mcin_lcl_lfc='mcin')
     mod_params['lcl']=mod_inst.sel(mcape_mcin_lcl_lfc='lcl')
     mod_params['lfc']=mod_inst.sel(mcape_mcin_lcl_lfc='lfc')#.squeeze(dim='mcape_mcin_lcl_lfc')
-    q1level=copy.deepcopy(tlevel)
-    q1level.data=qlevel
-    mod_params['q500']=q1level[:,7,:,:]
-    mod_params['r500']=rlevel[:,7,:,:]
-    mod_params['t500']=tlevel[:,7,:,:]
-    mod_params['q925']=q1level[:,11,:,:]
-    mod_params['r925']=rlevel[:,11,:,:]
-    mod_params['t925']=tlevel[:,11,:,:]
     mod_params = mod_params.squeeze()
-    mod_params = mod_params.drop(['mcape_mcin_lcl_lfc'])
+    mod_params = mod_params.drop(['mcape_mcin_lcl_lfc','level'])
     
     
     mod_params.to_netcdf(savepath+flag+'_conv_'+model+'_'+init+'.nc')

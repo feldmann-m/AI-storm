@@ -223,6 +223,8 @@ rlevel=metpy.calc.relative_humidity_from_specific_humidity(plevel_exp.values* un
 
 r1level=copy.deepcopy(tlevel)
 r1level.data=rlevel
+
+#rlevel=xr_init.relative_humidity
 init_params['q500']=qlevel.sel(level=500)
 init_params['r500']=r1level.sel(level=500)
 init_params['t500']=tlevel.sel(level=500)
