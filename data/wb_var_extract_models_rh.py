@@ -110,6 +110,7 @@ for file in files[:]:
     tsurf = xr_model.t2m #['__xarray_dataarray_variable__'][:,4,:]
     usurf = xr_model.u10 #['__xarray_dataarray_variable__'][:,0,:]
     vsurf = xr_model.v10 #['__xarray_dataarray_variable__'][:,1,:]
+    pmsl = xr_model.msl
 
     plevel_dim=np.ones([1,len(plevel),1,1])
     for n1 in range(len(plevel)):
@@ -129,7 +130,7 @@ for file in files[:]:
     zs=zsurf/9.81
     zl=zlevel/9.81
 
-    #psurf=pmsl * (tsurf/ (tsurf - (zs) * 0.0065))**(-1)
+    psurf=pmsl * (tsurf/ (tsurf - (zs) * 0.0065))**(-1)
     ps=psurf/100
 
     
@@ -174,4 +175,4 @@ for file in files[:]:
     mod_params = mod_params.drop(['mcape_mcin_lcl_lfc','level'])
     
     
-    mod_params.to_netcdf(savepath+flag+'_conv_'+model+'_'+init+'a.nc')
+    mod_params.to_netcdf(savepath+flag+'_conv_'+model+'_'+init+'b.nc')
