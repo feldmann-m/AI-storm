@@ -101,15 +101,15 @@ for file in files[:]:
     #xr_model=xr_model.squeeze(dim='history')
     xr_model=xr_model.sortby('latitude').sel(latitude=latslice,longitude=lonslice)
     plevel=[50,100,150,200,250,300,400,500,600,700,850,925,1000]
-    ulevel = xr_model.u #xr_model['__xarray_dataarray_variable__'][:,8:21,:]
-    vlevel = xr_model.v #['__xarray_dataarray_variable__'][:,21:34,:]
-    zlevel = xr_model.z #['__xarray_dataarray_variable__'][:,34:47,:]
-    tlevel = xr_model.t #['__xarray_dataarray_variable__'][:,47:60,:]
-    rlevel = xr_model.r #['__xarray_dataarray_variable__'][:,60:73,:]
-    psurf = xr_model.sp #['__xarray_dataarray_variable__'][:,5,:]
-    tsurf = xr_model.t2m #['__xarray_dataarray_variable__'][:,4,:]
-    usurf = xr_model.u10 #['__xarray_dataarray_variable__'][:,0,:]
-    vsurf = xr_model.v10 #['__xarray_dataarray_variable__'][:,1,:]
+    ulevel = xr_model.u 
+    vlevel = xr_model.v 
+    zlevel = xr_model.z 
+    tlevel = xr_model.t 
+    rlevel = xr_model.r 
+    psurf = xr_model.sp 
+    tsurf = xr_model.t2m 
+    usurf = xr_model.u10 
+    vsurf = xr_model.v10 
     pmsl = xr_model.msl
 
     plevel_dim=np.ones([1,len(plevel),1,1])
@@ -130,7 +130,7 @@ for file in files[:]:
     zs=zsurf/9.81
     zl=zlevel/9.81
 
-    psurf=pmsl * (tsurf/ (tsurf - (zs) * 0.0065))**(-1)
+    #psurf=pmsl * (tsurf/ (tsurf - (zs) * 0.0065))**(-1)
     ps=psurf/100
 
     

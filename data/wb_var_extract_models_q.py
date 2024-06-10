@@ -106,7 +106,7 @@ else:
 xr_model=xr_model.sel(time=xr_model.time.dt.year.isin([year]))
 xr_model=xr_model.sel(time=xr_model.time.dt.month.isin([month]))
 if nn==5: xr_model.sel(level=[  50,  100,  150,  200,  250,  300,  400,  500,  600,  700,  850,  925,
-       1000])
+       1000]) #test to reduce graphcast model levels, disable to keep all model levels
 for t in xr_model.time[:]:
     xr_dataset=xr_model.sel(time=t)
     fcst_init=xr_dataset.time
