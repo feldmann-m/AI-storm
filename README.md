@@ -22,9 +22,7 @@ Target:
 
     Values of instability and shear -> RMSE, BIAS, SAL-score
 
-    Investigation of bias? -> role of moisture
-
-    Global vs regional -> issues over ocean areas, relevant areas for convection limited 
+    Investigation of bias -> role of moisture
 
     Evaluation of convective season NH&SH -> North America, Europe, Australia, Argentina
 
