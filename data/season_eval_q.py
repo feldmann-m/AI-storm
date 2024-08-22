@@ -76,6 +76,11 @@ colors=[c1,c2,c4,c3,c6,c5,c5,c5]
 ##% EVALUATION
 era_ref=xr.open_dataset(datapath+references[0]).sortby('latitude').fillna(0)
 era_ref.r925.data = era_ref.r925.values * 100
+lsm = xr.open_dataset('/users/mfeldman/LSM.nc').sortby('lat').fillna(0).isel(time=0).squeeze()
+lsm = lsm.rename({'lon': 'longitude','lat': 'latitude'})
+era_ref.coords['longitude'] = (era_ref.coords['longitude'] + 180) % 360 - 180
+era_ref = era_ref.sortby(lsm.longitude)
+lsm = lsm.sel(longitude=era_ref.longitude.values,latitude = era_ref.latitude.values).LSM.values
 cape=era_ref.cape.squeeze().values
 wms=(cape * 2)**0.5 * era_ref.bs_06
 era_ref=era_ref.assign(wms=lambda era_ref: wms)
@@ -123,6 +128,8 @@ for nn in range(len(models))[:-1]:
         for tstep in range(len(model_set[kw2])):
             ref=era_ref.sel(time=(model_set.time+model_set.prediction_timedelta))[var].values[tstep,:,:]*f1
             mod=model_set[var].values[tstep,:,:]*f1
+            mod = mod * lsm
+            ref = ref * lsm
 
             fss_eval_300[tstep+ii,file] = fss(mod, ref, l1, scale=4)
             fss_eval_1000[tstep+ii,file] = fss(mod, ref, l2, scale=4)
@@ -152,7 +159,7 @@ for nn in range(len(models))[:-1]:
         ),
         attrs=dict(description="Evaluation scores"),
     )
-    ds.to_netcdf(datapath+model+var+'_eval_scores.nc')
+    ds.to_netcdf(datapath+model+var+'_eval_scores_lsm.nc')
     ds.close()
     
 #     axes2[0].plot(np.arange(41)*6,np.nanmean(sal_s,axis=1),c=color,label=label)

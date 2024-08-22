@@ -75,6 +75,12 @@ c7='#808080' #grey
 colors=[c1,c2,c4,c3,c6,c5,c5,c5]
 ##% EVALUATION
 era_ref=xr.open_dataset(datapath+references[0]).sortby('latitude').fillna(0)
+lsm = xr.open_dataset('/users/mfeldman/LSM.nc').sortby('lat').fillna(0).isel(time=0).squeeze()
+lsm = lsm.rename({'lon': 'longitude','lat': 'latitude'})
+era_ref.coords['longitude'] = (era_ref.coords['longitude'] + 180) % 360 - 180
+era_ref = era_ref.sortby(lsm.longitude)
+lsm = lsm.sel(longitude=era_ref.longitude.values,latitude = era_ref.latitude.values).LSM.values
+#era_ref = era_ref * lsm.LSM
 cape=era_ref.cape.squeeze().values
 wms=(cape * 2)**0.5 * era_ref.bs_06
 era_ref=era_ref.assign(wms=lambda era_ref: wms)
@@ -89,7 +95,7 @@ l2=[1000,-300,20,10,10,500][mm]
 f1=[1,-1,1,1,1,1][mm]
 fig,axes = plt.subplots(1,4,figsize=(16, 5))
 fig2,axes2 = plt.subplots(1,3,figsize=(12, 5))
-for nn in range(len(models))[-2:]:
+for nn in range(len(models))[:]:
     kw='latitude'
     kw2='prediction_timedelta'
     model=models[nn]
@@ -123,7 +129,14 @@ for nn in range(len(models))[-2:]:
             model_set=model_set.assign(wms=lambda model_set: wmsm )
         for tstep in range(len(model_set[kw2])):
             ref=era_ref.sel(time=(model_set.time+model_set.prediction_timedelta))[var].values[tstep,:,:]*f1
+            ref_filt = era_ref.sel(time=(model_set.time+model_set.prediction_timedelta))['cape'].values[tstep,:,:] > 300
             mod=model_set[var].values[tstep,:,:]*f1
+            mod_filt = model_set['cape'].values[tstep,:,:] > 300
+            mod = mod * lsm
+            ref = ref * lsm
+            if nn>1:
+                mod = mod * mod_filt
+                ref = ref * ref_filt
 
             fss_eval_300[tstep+ii,file] = fss(mod, ref, l1, scale=4)
             fss_eval_1000[tstep+ii,file] = fss(mod, ref, l2, scale=4)
@@ -153,7 +166,7 @@ for nn in range(len(models))[-2:]:
         ),
         attrs=dict(description="Evaluation scores"),
     )
-    ds.to_netcdf(datapath+model+var+'_eval_scores.nc')
+    ds.to_netcdf(datapath+model+var+'_eval_scores_lsm.nc')
     ds.close()
     
     axes2[0].plot(np.arange(41)*6,np.nanmean(sal_s,axis=1),c=color,label=label)
@@ -215,5 +228,5 @@ fig2.tight_layout()
 fig2.savefig(figpath+var+'_sal_scores.png')
 
 fig.tight_layout()
-fig.show()
+#fig.show()
 fig.savefig(figpath+var+'_err_scores.png')
