@@ -134,7 +134,7 @@ for nn in range(len(models))[:]:
             mod_filt = model_set['cape'].values[tstep,:,:] > 0
             mod = mod * lsm
             ref = ref * lsm
-            if nn>1:
+            if mm>1:
                 mod = mod * mod_filt
                 ref = ref * ref_filt
 
