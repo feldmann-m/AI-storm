@@ -129,9 +129,9 @@ for nn in range(len(models))[:]:
             model_set=model_set.assign(wms=lambda model_set: wmsm )
         for tstep in range(len(model_set[kw2])):
             ref=era_ref.sel(time=(model_set.time+model_set.prediction_timedelta))[var].values[tstep,:,:]*f1
-            ref_filt = era_ref.sel(time=(model_set.time+model_set.prediction_timedelta))['cape'].values[tstep,:,:] > 300
+            ref_filt = era_ref.sel(time=(model_set.time+model_set.prediction_timedelta))['cape'].values[tstep,:,:] > 0
             mod=model_set[var].values[tstep,:,:]*f1
-            mod_filt = model_set['cape'].values[tstep,:,:] > 300
+            mod_filt = model_set['cape'].values[tstep,:,:] > 0
             mod = mod * lsm
             ref = ref * lsm
             if nn>1:
@@ -166,7 +166,7 @@ for nn in range(len(models))[:]:
         ),
         attrs=dict(description="Evaluation scores"),
     )
-    ds.to_netcdf(datapath+model+var+'_eval_scores_lsm.nc')
+    ds.to_netcdf(datapath+model+var+'_eval_scores_lsm_cf.nc')
     ds.close()
     
     axes2[0].plot(np.arange(41)*6,np.nanmean(sal_s,axis=1),c=color,label=label)
