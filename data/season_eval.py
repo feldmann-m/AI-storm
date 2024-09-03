@@ -62,6 +62,8 @@ elif event_ID==4:
 datapath='/work/FAC/FGSE/IDYST/tbeucler/default/raw_data/MF_ML_PREDICT/season_2020_'+flag+'/'
 models=['graphcast_','graphcast-oper_','pangu_','pangu-oper_','ifs_','sfno_','sfno-oper_','graphcast-red']#'fcnv2_dawn','ifs']
 labels=['graphcast','graphcast-oper','pangu','pangu-oper','ifs','sfno','sfno-oper','graphcast-red']
+models=['pangu_','sfno-oper_']#'fcnv2_dawn','ifs']
+labels=['pangu','sfno-oper']
 references=[flag+'_era5_convseason_2020.nc',flag+'_init_convseason_2020.nc']
 rlabels=['era5','ifs-init']
 figpath='/users/mfeldman/figs/season/'
